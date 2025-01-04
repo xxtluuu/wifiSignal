@@ -144,6 +144,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  get_it:
+    dependency: "direct main"
+    description:
+      name: get_it
+      sha256: d85128a5dae4ea777324730dc65edd9c9f43155c109d5cc0a69cab74139fbac1
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.7.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -248,6 +256,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.2"
+  ping_discover_network_forked:
+    dependency: "direct main"
+    description:
+      name: ping_discover_network_forked
+      sha256: d3975c4f3fbaa388f78fb4037ad9c33059d8e2ec0e804ed45e05277d2451fe77
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.1"
   plugin_platform_interface:
     dependency: transitive
     description:

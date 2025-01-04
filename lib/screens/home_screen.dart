@@ -5,6 +5,7 @@ import '../widgets/wifi_list_item.dart';
 import '../widgets/wifi_signal_display.dart';
 import 'dart:io' show Platform;
 import 'channel_analysis_screen.dart';
+import 'ip_scanner_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -68,6 +69,19 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
             tooltip: '信道分析',
+          ),
+          // IP扫描入口
+          IconButton(
+            icon: const Icon(Icons.lan),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const IpScannerScreen(),
+                ),
+              );
+            },
+            tooltip: 'IP扫描',
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
