@@ -25,7 +25,7 @@ class WifiScanner {
   static const List<int> _vibrationPattern = [0, 30]; // 震动强度模式，设置为30%
 
   // 平台通道
-  static const platform = MethodChannel('com.wifitool.wifisignal/wifi');
+  static const platform = MethodChannel('wifi.luuu.com/wifi');
 
   // 开始实时监测
   Future<void> startMonitoring() async {

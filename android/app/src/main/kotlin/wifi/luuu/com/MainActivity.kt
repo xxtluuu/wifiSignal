@@ -1,4 +1,4 @@
-package com.wifitool.wifisignal
+package wifi.luuu.com
 
 import android.content.Context
 import android.net.wifi.WifiManager
@@ -11,8 +11,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.wifitool.wifisignal/wifi"
+    private val CHANNEL = "wifi.luuu.com/wifi"
     private val PERMISSION_REQUEST_CODE = 123
+    private var pendingResult: MethodChannel.Result? = null
+    private var pendingOperation: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -23,16 +25,18 @@ class MainActivity: FlutterActivity() {
                     if (checkPermissions()) {
                         getWifiSignalStrength(result)
                     } else {
+                        pendingResult = result
+                        pendingOperation = "getWifiSignalStrength"
                         requestPermissions()
-                        result.error("PERMISSION_DENIED", "需要位置权限来获取WiFi信息", null)
                     }
                 }
                 "getWifiFrequency" -> {
                     if (checkPermissions()) {
                         getWifiFrequency(result)
                     } else {
+                        pendingResult = result
+                        pendingOperation = "getWifiFrequency"
                         requestPermissions()
-                        result.error("PERMISSION_DENIED", "需要位置权限来获取WiFi信息", null)
                     }
                 }
                 else -> {
@@ -58,6 +62,29 @@ class MainActivity: FlutterActivity() {
             ),
             PERMISSION_REQUEST_CODE
         )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限被授予，执行待处理的操作
+                when (pendingOperation) {
+                    "getWifiSignalStrength" -> pendingResult?.let { getWifiSignalStrength(it) }
+                    "getWifiFrequency" -> pendingResult?.let { getWifiFrequency(it) }
+                }
+            } else {
+                // 权限被拒绝
+                pendingResult?.error("PERMISSION_DENIED", "需要位置权限来获取WiFi信息", null)
+            }
+            // 清理待处理的操作
+            pendingResult = null
+            pendingOperation = null
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     private fun getWifiSignalStrength(result: MethodChannel.Result) {

@@ -9,7 +9,7 @@
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"/>
 
     <application
-        android:label="WiFi信号测试器"
+        android:label="WiFi信号优化助手"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
