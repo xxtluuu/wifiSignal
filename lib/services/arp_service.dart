@@ -5,41 +5,87 @@ import 'dart:typed_data';
 class ARPService {
   static const int _timeout = 300; // 超时时间(毫秒)
   static const int _maxConcurrent = 20; // 最大并发扫描数
-  // 常见设备端口列表
+  
+  // 整合后的常见设备端口列表
   static const List<int> _commonPorts = [
-    80,    // HTTP - 通用Web服务
+    // 基础网络服务
+    20,    // FTP - 数据传输
+    21,    // FTP - 控制连接
+    22,    // SSH - 安全远程访问
+    23,    // Telnet - 远程登录
+    25,    // SMTP - 邮件发送
+    53,    // DNS - 域名解析
+    67,    // DHCP - 服务器端
+    68,    // DHCP - 客户端
+    69,    // TFTP - 简单文件传输
+    80,    // HTTP - Web服务
+    110,   // POP3 - 邮件接收
+    143,   // IMAP - 邮件访问
+    161,   // SNMP - 网络管理
+    162,   // SNMP Trap
     443,   // HTTPS - 安全Web服务
-    445,   // SMB - Windows文件共享
-    139,   // NetBIOS - Windows网络
-    22,    // SSH - Mac/Linux远程访问
-    5000,  // Android开发服务
-    5555,  // Android ADB
-    62078, // iOS服务
-    548,   // AFP - Mac文件共享
-    88,    // Kerberos - Windows域服务
-    515,   // 打印机LPD服务
-    631,   // IPP - 打印机服务
-    9100,  // 打印机原始端口
-    8080,  // 常用Web替代端口
-    8443,  // 常用HTTPS替代端口
-    32469, // Plex媒体服务器
+    
+    // 文件共享和打印服务
+    137,   // NetBIOS - 名称服务
+    138,   // NetBIOS - 数据报
+    139,   // NetBIOS - 会话服务
+    445,   // SMB/CIFS - 文件共享
+    515,   // LPD/LPR - 打印服务
+    631,   // IPP - 互联网打印协议
+    9100,  // RAW/JetDirect 打印
+
+    // 数据库和管理服务
+    1433,  // MS SQL Server
+    1521,  // Oracle数据库
+    3306,  // MySQL/MariaDB
+    5432,  // PostgreSQL
+    3389,  // RDP - 远程桌面
+    10000, // Webmin管理界面
+
+    // IoT和智能设备
+    1883,  // MQTT - IoT消息协议
+    5683,  // CoAP - 物联网协议
     5353,  // mDNS - 设备发现
     1900,  // SSDP - 设备发现
-    2869,  // UPNP - 设备发现
-    5357,  // WSDAPI - 设备发现
-    3689,  // DAAP - iTunes共享
+    49152, // UPnP - 设备发现
+    
+    // 流媒体和娱乐
+    554,   // RTSP - 实时流协议
+    1935,  // RTMP - 实时消息协议
+    3074,  // Xbox Live游戏服务
+    3478,  // STUN/TURN - VoIP服务
+    3479,  // STUN/TURN - VoIP备用
+    32469, // Plex媒体服务器
+    8554,  // Live555 RTSP服务
+    
+    // 移动设备服务
+    5000,  // Android开发服务
+    5555,  // Android ADB调试
+    62078, // iOS服务
+    
+    // NAS和媒体服务器
     548,   // AFP - Apple文件共享
-    5000,  // Synology NAS
-    5001,  // Synology NAS
     8096,  // Jellyfin媒体服务器
-    8123,  // Home Assistant
-    49152, // Windows UPnP
+    8123,  // Home Assistant智能家居
+    5001,  // Synology NAS服务
+    
+    // 替代端口
+    8080,  // 替代HTTP端口
+    8443,  // 替代HTTPS端口
+    
+    // 额外的服务发现端口
+    5357,  // WSDAPI - Web服务发现
+    3689,  // DAAP - iTunes音乐共享
   ];
   
+  // 取消标志
   bool get isCancelled => _isCancelled;
   bool _isCancelled = false;
   List<StreamSubscription>? _activeSubscriptions;
 
+  /// 扫描网络设备
+  /// onProgress: 扫描进度回调函数
+  /// onDeviceFound: 发现设备回调函数
   Future<List<String>> scanNetwork({
     Function(double)? onProgress,
     Function(String)? onDeviceFound,
@@ -64,6 +110,7 @@ class ARPService {
           }
         }
       }
+      
       // 收集所有可能的局域网IP地址
       final List<Map<String, String>> privateAddresses = [];
       
@@ -129,7 +176,7 @@ class ARPService {
         localIP = selectedAddress['address']!;
         subnet = localIP.substring(0, localIP.lastIndexOf('.'));
         print('确认本机IP: $localIP');
-        devices.add(localIP); // 直接添加本机IP，因为这是从系统接口获取的可靠信息
+        devices.add(localIP); // 直接添加本机IP
         onDeviceFound?.call(localIP); // 通知发现了本机IP
       }
 
@@ -204,6 +251,7 @@ class ARPService {
     return _isCancelled ? [] : devices;
   }
 
+  /// 扫描单个主机的端口
   Future<bool> _scanHost(String ip) async {
     if (_isCancelled) return false;
     
@@ -218,6 +266,7 @@ class ARPService {
     }
   }
 
+  /// 检查单个端口是否开放
   Future<bool> _checkPort(String ip, int port) async {
     if (_isCancelled) return false;
     
@@ -235,6 +284,7 @@ class ARPService {
     }
   }
 
+  /// 取消扫描操作
   void cancel() {
     _isCancelled = true;
     _activeSubscriptions?.forEach((subscription) => subscription.cancel());
