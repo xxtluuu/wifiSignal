@@ -17,7 +17,7 @@ dependencies:
   vibration: ^1.8.3
   get_it: ^7.6.7
   ping_discover_network_forked: ^0.0.1
-  
+  webview_flutter: ^4.4.2
 
 dev_dependencies:
   flutter_test:

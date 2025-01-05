@@ -61,6 +61,12 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.analytics),
             onPressed: () {
+              if (_isMonitoring) {
+                setState(() {
+                  _isMonitoring = false;
+                  _scanner.stopMonitoring();
+                });
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -74,6 +80,12 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.lan),
             onPressed: () {
+              if (_isMonitoring) {
+                setState(() {
+                  _isMonitoring = false;
+                  _scanner.stopMonitoring();
+                });
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -82,11 +94,6 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
             tooltip: 'IP扫描',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadCurrentNetwork,
-            tooltip: '刷新WiFi信息',
           ),
         ],
       ),
