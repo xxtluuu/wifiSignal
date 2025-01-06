@@ -13,12 +13,12 @@ class IpScannerScreen extends StatefulWidget {
 }
 
 class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProviderStateMixin {
-  final List<String> _activeIPs = [];
-  bool _isScanning = false;
-  String _localIP = '';
-  double _progress = 0.0;
   late AnimationController _animationController;
   final _arpService = getIt<ARPService>();
+  final ValueNotifier<bool> _isScanning = ValueNotifier<bool>(false);
+  final ValueNotifier<String> _localIP = ValueNotifier<String>('');
+  final ValueNotifier<List<String>> _activeIPs = ValueNotifier<List<String>>([]);
+  final ValueNotifier<double> _progress = ValueNotifier<double>(0.0);
   final ValueNotifier<int> _deviceCount = ValueNotifier<int>(0);
 
   @override
@@ -26,7 +26,7 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 1500),
     )..repeat();
     
     // 立即开始新的扫描
@@ -38,23 +38,25 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
     // 取消正在进行的扫描
     _arpService.cancel();
     _animationController.dispose();
+    _isScanning.dispose();
+    _localIP.dispose();
+    _activeIPs.dispose();
+    _progress.dispose();
     _deviceCount.dispose();
     super.dispose();
   }
 
   Future<void> _startScan() async {
     // 如果正在扫描，先取消当前扫描
-    if (_isScanning) {
+    if (_isScanning.value) {
       _arpService.cancel();
     }
     
     // 重置所有状态
-    setState(() {
-      _isScanning = true;
-      _activeIPs.clear();
-      _localIP = '';
-      _progress = 0.0;
-    });
+    _isScanning.value = true;
+    _localIP.value = '';
+    _activeIPs.value = [];
+    _progress.value = 0.0;
     _deviceCount.value = 0;
 
     try {
@@ -64,37 +66,31 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
       final devices = await _arpService.scanNetwork(
         onProgress: (progress) {
           if (mounted) {
-            setState(() {
-              _progress = progress;
-            });
+            _progress.value = progress;
           }
         },
         onDeviceFound: (device) {
           if (mounted) {
-            setState(() {
-              _activeIPs.add(device);
-              _deviceCount.value = _activeIPs.length;
-            });
+            if (!_activeIPs.value.contains(device)) {
+              _activeIPs.value = [..._activeIPs.value, device];
+              _deviceCount.value = _activeIPs.value.length;
+            }
           }
         },
       );
       
       if (mounted && !_arpService.isCancelled) {
-        setState(() {
-          if (devices.isNotEmpty) {
-            _localIP = devices.first; // 第一个是本机IP
-          }
-        });
+        if (devices.isNotEmpty) {
+          _localIP.value = devices.first; // 第一个是本机IP
+        }
       }
 
     } catch (e) {
       debugPrint('扫描错误: $e');
     } finally {
       if (mounted) {
-        setState(() {
-          _isScanning = false;
-          _progress = 1.0;
-        });
+        _isScanning.value = false;
+        _progress.value = 1.0;
       }
     }
   }
@@ -119,18 +115,25 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                 children: [
                   const Icon(Icons.computer, color: Colors.blue),
                   const SizedBox(width: 8),
-                  Text(
-                    '本机IP: $_localIP',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  ValueListenableBuilder<String>(
+                    valueListenable: _localIP,
+                    builder: (context, localIP, child) {
+                      return Text(
+                        '本机IP: $localIP',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
             Expanded(
-              child: _isScanning
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _isScanning,
+                builder: (context, isScanning, child) => isScanning
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -153,11 +156,16 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                                   ),
                                 ),
                                 // 进度圈
-                                CircularProgressIndicator(
-                                  value: _progress,
-                                  backgroundColor: Colors.grey[200],
-                                  strokeWidth: 8,
-                                  color: Colors.blue,
+                                ValueListenableBuilder<double>(
+                                  valueListenable: _progress,
+                                  builder: (context, progress, child) {
+                                    return CircularProgressIndicator(
+                                      value: progress,
+                                      backgroundColor: Colors.grey[200],
+                                      strokeWidth: 8,
+                                      color: Colors.blue,
+                                    );
+                                  },
                                 ),
                               ],
                             ),
@@ -172,13 +180,18 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                                 color: Colors.blue[700],
                               ),
                               const SizedBox(height: 16),
-                              Text(
-                                '${(_progress * 100).toInt()}%',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
-                                ),
+                              ValueListenableBuilder<double>(
+                                valueListenable: _progress,
+                                builder: (context, progress, child) {
+                                  return Text(
+                                    '${(progress * 100).toInt()}%',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  );
+                                },
                               ),
                               const SizedBox(height: 24),
                               Text(
@@ -210,14 +223,24 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                   : Column(
                       children: [
                         Expanded(
-                          child: ListView.builder(
-                            itemCount: _activeIPs.length,
-                            itemBuilder: (context, index) {
-                              final ip = _activeIPs[index];
-                              return ListTile(
-                                leading: const Icon(Icons.devices),
-                                title: Text(ip),
-                                subtitle: Text(ip == _localIP ? '(本机)' : '在线设备'),
+                          child: ValueListenableBuilder<List<String>>(
+                            valueListenable: _activeIPs,
+                            builder: (context, ips, child) {
+                              return ValueListenableBuilder<String>(
+                                valueListenable: _localIP,
+                                builder: (context, localIP, child) {
+                                  return ListView.builder(
+                                    itemCount: ips.length,
+                                    itemBuilder: (context, index) {
+                                      final ip = ips[index];
+                                      return ListTile(
+                                        leading: const Icon(Icons.devices),
+                                        title: Text(ip),
+                                        subtitle: Text(ip == localIP ? '(本机)' : '在线设备'),
+                                      );
+                                    },
+                                  );
+                                },
                               );
                             },
                           ),
@@ -240,6 +263,7 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                         ),
                       ],
                     ),
+              ),
             ),
           ],
         ),
@@ -251,33 +275,34 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
 // 自定义扫描动画画笔
 class _ScannerPainter extends CustomPainter {
   final Color color;
-
-  _ScannerPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    final radius = size.width / 2;
-    final center = Offset(size.width / 2, size.height / 2);
-
-    // 绘制雷达扫描线
-    for (var i = 0; i < 4; i++) {
-      final startAngle = (i * pi / 2);
-      final sweepAngle = pi / 4;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        false,
-        paint,
-      );
-    }
+  final Paint _paint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2;
+  
+  _ScannerPainter({required this.color}) {
+    _paint.color = color;
   }
 
   @override
-  bool shouldRepaint(_ScannerPainter oldDelegate) => false;
+  void paint(Canvas canvas, Size size) {
+    final radius = size.width / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+    
+    // 使用Path一次性绘制所有扫描线
+    final path = Path();
+    for (var i = 0; i < 4; i++) {
+      final startAngle = (i * pi / 2);
+      final sweepAngle = pi / 4;
+      path.addArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+      );
+    }
+    canvas.drawPath(path, _paint);
+  }
+
+  @override
+  bool shouldRepaint(_ScannerPainter oldDelegate) => 
+    oldDelegate.color != color;
 }
