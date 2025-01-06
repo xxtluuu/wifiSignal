@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('WiFi信号优化助手'),
+        title: const Text('WiFi优化助手'),
         actions: [
           // 信道分析入口
           IconButton(

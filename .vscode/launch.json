@@ -2,19 +2,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "WiFi信号优化助手(debug)",
+            "name": "WiFi优化助手(debug)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "debug"
         },
         {
-            "name": "WiFi信号优化助手(profile)",
+            "name": "WiFi优化助手(profile)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
-            "name": "WiFi信号优化助手(release)",
+            "name": "WiFi优化助手(release)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"
