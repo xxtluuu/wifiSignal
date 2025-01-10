@@ -20,6 +20,7 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
   final ValueNotifier<List<String>> _activeIPs = ValueNotifier<List<String>>([]);
   final ValueNotifier<double> _progress = ValueNotifier<double>(0.0);
   final ValueNotifier<int> _deviceCount = ValueNotifier<int>(0);
+  final ValueNotifier<bool> _hasVPN = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
     _activeIPs.dispose();
     _progress.dispose();
     _deviceCount.dispose();
+    _hasVPN.dispose();
     super.dispose();
   }
 
@@ -58,8 +60,15 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
     _activeIPs.value = [];
     _progress.value = 0.0;
     _deviceCount.value = 0;
+    _hasVPN.value = false;
 
     try {
+      // 检查VPN状态
+      if (await _arpService.isVPNActive()) {
+        _hasVPN.value = true;
+        throw Exception('检测到VPN连接，请关闭VPN后重试');
+      }
+      
       // 确保之前的扫描已经完全取消
       await Future.delayed(const Duration(milliseconds: 100));
       
@@ -87,6 +96,19 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
 
     } catch (e) {
       debugPrint('扫描错误: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString().contains('VPN') 
+                ? '检测到VPN连接，请关闭VPN后重试' 
+                : '扫描出错，请重试'
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         _isScanning.value = false;
@@ -109,6 +131,40 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
         ),
         body: Column(
           children: [
+            // VPN警告提示
+            ValueListenableBuilder<bool>(
+              valueListenable: _hasVPN,
+              builder: (context, hasVPN, child) {
+                if (!hasVPN) return const SizedBox.shrink();
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  color: Colors.red.shade50,
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, 
+                        color: Colors.red[700],
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '检测到VPN连接，请关闭VPN后重试',
+                          style: TextStyle(
+                            color: Colors.red[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _startScan,
+                        child: const Text('重试'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -285,21 +341,29 @@ class _ScannerPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final radius = size.width / 2;
     final center = Offset(size.width / 2, size.height / 2);
     
-    // 使用Path一次性绘制所有扫描线
-    final path = Path();
-    for (var i = 0; i < 4; i++) {
-      final startAngle = (i * pi / 2);
-      final sweepAngle = pi / 4;
-      path.addArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-      );
+    // 绘制两个同心圆
+    for (int i = 1; i <= 2; i++) {
+      final radius = (size.width / 2) * (i / 2);
+      final path = Path();
+      
+      // 每个圆绘制4个弧形
+      for (var j = 0; j < 4; j++) {
+        final startAngle = (j * pi / 2);
+        final sweepAngle = pi / 4;
+        path.addArc(
+          Rect.fromCircle(center: center, radius: radius),
+          startAngle,
+          sweepAngle,
+        );
+      }
+      
+      // 根据圆的大小调整透明度
+      final opacity = 0.8 - (i - 1) * 0.3;
+      _paint.color = color.withOpacity(opacity);
+      canvas.drawPath(path, _paint);
     }
-    canvas.drawPath(path, _paint);
   }
 
   @override

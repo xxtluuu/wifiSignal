@@ -6,6 +6,54 @@ class ARPService {
   static const int _timeout = 300; // 超时时间(毫秒)
   static const int _maxConcurrent = 20; // 最大并发扫描数
   
+  // VPN相关的网络接口名称
+  static const List<String> _vpnInterfaces = [
+    'tun', // OpenVPN
+    'ppp', // PPTP VPN
+    'ipsec', // IPSec VPN
+    'utun', // iOS/macOS VPN
+    'ras', // Windows VPN
+    'tap', // OpenVPN TAP
+    'nordlynx', // NordVPN WireGuard
+    'wg', // WireGuard
+  ];
+
+  /// 检查是否存在VPN连接
+  Future<bool> isVPNActive() async {
+    try {
+      final interfaces = await NetworkInterface.list();
+      
+      for (var interface in interfaces) {
+        // 检查接口名称是否包含VPN相关标识
+        if (_vpnInterfaces.any((vpn) => interface.name.toLowerCase().contains(vpn))) {
+          print('检测到VPN接口: ${interface.name}');
+          return true;
+        }
+        
+        // 检查IP地址特征
+        for (var addr in interface.addresses) {
+          if (addr.type == InternetAddressType.IPv4) {
+            // 检查是否是VPN典型的IP段
+            if (addr.address.startsWith('10.') || 
+                (addr.address.startsWith('172.') && 
+                 int.parse(addr.address.split('.')[1]) >= 16 && 
+                 int.parse(addr.address.split('.')[1]) <= 31)) {
+              print('检测到可能的VPN IP地址: ${addr.address} on ${interface.name}');
+              // 进一步验证是否确实是VPN接口
+              if (_vpnInterfaces.any((vpn) => interface.name.toLowerCase().contains(vpn))) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+      return false;
+    } catch (e) {
+      print('VPN检测错误: $e');
+      return false;
+    }
+  }
+  
   // 整合后的常见设备端口列表
   static const List<int> _commonPorts = [
     // 基础网络服务
@@ -86,6 +134,7 @@ class ARPService {
   /// 扫描网络设备
   /// onProgress: 扫描进度回调函数
   /// onDeviceFound: 发现设备回调函数
+  /// 如果检测到VPN连接，将抛出异常
   Future<List<String>> scanNetwork({
     Function(double)? onProgress,
     Function(String)? onDeviceFound,
@@ -97,6 +146,11 @@ class ARPService {
     String? localIP;
     
     try {
+      // 检查VPN连接
+      if (await isVPNActive()) {
+        throw Exception('检测到VPN连接，请关闭VPN后重试');
+      }
+      
       // 获取本机IP和子网
       final interfaces = await NetworkInterface.list();
       
