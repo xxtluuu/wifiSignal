@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     } finally {
-      setState(() => _isLoading = false);
+         setState(() => _isLoading = false);
     }
   }
 
@@ -135,10 +135,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 5),
                         
                         // 实时信号显示
-                        if (_isMonitoring)
-                          WifiSignalDisplay(wifiScanner: _scanner),
-                        
-                        const SizedBox(height: 16),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.easeInOut,
+                          child: Column(
+                            children: [
+                              if (_isMonitoring)
+                                WifiSignalDisplay(wifiScanner: _scanner),
+                              SizedBox(height: _isMonitoring ? 16 : 0),
+                            ],
+                          ),
+                        ),
                         
                         // 当前网络信息卡片
                         Card(

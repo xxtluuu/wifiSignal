@@ -188,42 +188,53 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
         ),
         
         // 信号强度显示
-        if (_signalData.isNotEmpty)
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${_signalData.last.y.toInt()} dBm',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const SizedBox(width: 16),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+        AnimatedOpacity(
+          opacity: _signalData.isNotEmpty ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            height: _signalData.isNotEmpty ? null : 0,
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                  if (_signalData.isNotEmpty) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${_signalData.last.y.toInt()} dBm',
+                          style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        decoration: BoxDecoration(
-                          color: _getSignalColor(_signalData.last.y.toInt()),
-                          borderRadius: BorderRadius.circular(16),
+                        const SizedBox(width: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getSignalColor(_signalData.last.y.toInt()),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            widget.wifiScanner.getSignalLevel(_signalData.last.y.toInt()),
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
-                        child: Text(
-                          widget.wifiScanner.getSignalLevel(_signalData.last.y.toInt()),
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   // 信号趋势图
-                  SizedBox(
-                    height: 200,
-                    child: LineChart(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeInOut,
+                    height: _signalData.isNotEmpty ? 200 : 0,
+                    child: _signalData.isNotEmpty ? LineChart(
                       LineChartData(
                         gridData: FlGridData(show: true),
                         titlesData: const FlTitlesData(
@@ -262,15 +273,22 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
                           ),
                         ],
                       ),
-                    ),
+                    ) : const SizedBox(),
                   ),
                   const SizedBox(height: 16),
                   // 信号强度标准
-                  _buildSignalStandardTable(),
-                ],
+                  AnimatedOpacity(
+                    opacity: _signalData.isNotEmpty ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeInOut,
+                    child: _buildSignalStandardTable(),
+                  ),
+                  ],
+                ),
               ),
             ),
           ),
+        ),
       ],
     );
   }
