@@ -57,11 +57,8 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
 
   @override
   void dispose() {
-    // 先取消信号流订阅
     _signalSubscription?.cancel();
     _signalSubscription = null;
-    
-    // 然后停止监测
     widget.wifiScanner.stopMonitoring();
     super.dispose();
   }

@@ -26,6 +26,11 @@ class WifiScanner {
 
   // 平台通道
   static const platform = MethodChannel('wifi.luuu.com/wifi');
+  
+  // 存储所有WiFi网络列表
+  List<WifiNetwork> _allNetworks = [];
+  final _networksController = StreamController<List<WifiNetwork>>.broadcast();
+  Stream<List<WifiNetwork>> get networksStream => _networksController.stream;
 
   // 开始实时监测
   Future<void> startMonitoring() async {
@@ -238,8 +243,36 @@ class WifiScanner {
   }
 
   // 释放资源
+  // 获取所有WiFi网络列表
+  Future<List<WifiNetwork>> getAllNetworks() async {
+    if (Platform.isAndroid) {
+      try {
+        final List<dynamic> networks = await platform.invokeMethod('getAllWifiNetworks') ?? [];
+        _allNetworks = networks.map((network) {
+          return WifiNetwork(
+            ssid: network['ssid']?.toString().replaceAll('"', '') ?? '',
+            bssid: network['bssid'] ?? '',
+            signalStrength: (network['signalStrength'] as int?)?.toDouble() ?? 0,
+            frequency: network['frequency'] as int?,
+            timestamp: DateTime.now(),
+          );
+        }).toList();
+        
+        // 按信号强度排序
+        _allNetworks.sort((a, b) => b.signalStrength.compareTo(a.signalStrength));
+        _networksController.add(_allNetworks);
+        return _allNetworks;
+      } catch (e) {
+        print('获取WiFi列表失败: $e');
+        return [];
+      }
+    }
+    return [];
+  }
+
   void dispose() {
     stopMonitoring();
     _signalController.close();
+    _networksController.close();
   }
 }

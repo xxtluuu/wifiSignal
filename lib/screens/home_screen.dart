@@ -3,6 +3,7 @@ import '../services/wifi_scanner.dart';
 import '../models/wifi_network.dart';
 import '../widgets/wifi_list_item.dart';
 import '../widgets/wifi_signal_display.dart';
+import '../widgets/same_name_networks.dart';
 import 'dart:io' show Platform;
 import 'channel_analysis_screen.dart';
 import 'ip_scanner_screen.dart';
@@ -162,6 +163,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 WifiListItem(network: _currentNetwork!),
+                                SameNameNetworks(
+                                  wifiScanner: _scanner,
+                                  currentNetwork: _currentNetwork!,
+                                ),
                                 if (Platform.isIOS)
                                   const Padding(
                                     padding: EdgeInsets.only(top: 8.0),

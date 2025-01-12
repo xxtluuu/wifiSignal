@@ -39,6 +39,15 @@ class MainActivity: FlutterActivity() {
                         requestPermissions()
                     }
                 }
+                "getAllWifiNetworks" -> {
+                    if (checkPermissions()) {
+                        getAllWifiNetworks(result)
+                    } else {
+                        pendingResult = result
+                        pendingOperation = "getAllWifiNetworks"
+                        requestPermissions()
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -75,6 +84,7 @@ class MainActivity: FlutterActivity() {
                 when (pendingOperation) {
                     "getWifiSignalStrength" -> pendingResult?.let { getWifiSignalStrength(it) }
                     "getWifiFrequency" -> pendingResult?.let { getWifiFrequency(it) }
+                    "getAllWifiNetworks" -> pendingResult?.let { getAllWifiNetworks(it) }
                 }
             } else {
                 // 权限被拒绝
@@ -136,6 +146,40 @@ class MainActivity: FlutterActivity() {
         } catch (e: Exception) {
             println("DEBUG: 获取WiFi频率时出错: ${e.message}")
             result.error("WIFI_ERROR", "获取WiFi频率失败: ${e.message}", null)
+        }
+    }
+
+    private fun getAllWifiNetworks(result: MethodChannel.Result) {
+        try {
+            val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            if (!wifiManager.isWifiEnabled) {
+                println("DEBUG: WiFi未启用")
+                result.success(emptyList<Map<String, Any>>())
+                return
+            }
+
+            // 开始扫描
+            wifiManager.startScan()
+            
+            // 获取扫描结果
+            val scanResults = wifiManager.scanResults
+            
+            // 转换为Map列表
+            val networksList = scanResults.map { scanResult ->
+                mapOf(
+                    "ssid" to (scanResult.SSID ?: ""),
+                    "bssid" to (scanResult.BSSID ?: ""),
+                    "signalStrength" to scanResult.level,
+                    "frequency" to scanResult.frequency
+                )
+            }
+            
+            println("DEBUG: 扫描到 ${networksList.size} 个WiFi网络")
+            result.success(networksList)
+            
+        } catch (e: Exception) {
+            println("DEBUG: 获取WiFi列表时出错: ${e.message}")
+            result.error("WIFI_ERROR", "获取WiFi列表失败: ${e.message}", null)
         }
     }
 }
