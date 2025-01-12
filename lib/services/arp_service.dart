@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:typed_data';
+import '../models/device_info.dart';
 
 class ARPService {
   static const int _timeout = 300; // 超时时间(毫秒)
@@ -131,17 +132,57 @@ class ARPService {
   bool _isCancelled = false;
   List<StreamSubscription>? _activeSubscriptions;
 
+  /// 根据开放端口判断设备类型
+  DeviceType _determineDeviceType(List<int> openPorts) {
+    // 检查是否是网关/路由器
+    if (openPorts.any((port) => [80, 443, 8080].contains(port))) {
+      return DeviceType.gateway;
+    }
+    
+    // 检查是否是打印机
+    if (openPorts.any((port) => [515, 631, 9100].contains(port))) {
+      return DeviceType.printer;
+    }
+    
+    // 检查是否是游戏机
+    if (openPorts.contains(3074)) {
+      return DeviceType.gameConsole;
+    }
+    
+    // 检查是否是移动设备
+    if (openPorts.any((port) => [5000, 5555, 62078].contains(port))) {
+      return DeviceType.mobile;
+    }
+    
+    // 检查是否是桌面设备
+    if (openPorts.contains(3389)) {
+      return DeviceType.desktop;
+    }
+    
+    // 检查是否是NAS设备
+    if (openPorts.any((port) => [548, 8096, 5001].contains(port))) {
+      return DeviceType.nas;
+    }
+    
+    // 检查是否是IoT设备
+    if (openPorts.any((port) => [1883, 5683, 1900, 49152].contains(port))) {
+      return DeviceType.iot;
+    }
+    
+    return DeviceType.unknown;
+  }
+
   /// 扫描网络设备
   /// onProgress: 扫描进度回调函数
   /// onDeviceFound: 发现设备回调函数
   /// 如果检测到VPN连接，将抛出异常
-  Future<List<String>> scanNetwork({
+  Future<List<DeviceInfo>> scanNetwork({
     Function(double)? onProgress,
-    Function(String)? onDeviceFound,
+    Function(DeviceInfo)? onDeviceFound,
   }) async {
     _isCancelled = false;
     _activeSubscriptions = [];
-    final List<String> devices = [];
+    final List<DeviceInfo> devices = [];
     String? subnet;
     String? localIP;
     
@@ -230,8 +271,16 @@ class ARPService {
         localIP = selectedAddress['address']!;
         subnet = localIP.substring(0, localIP.lastIndexOf('.'));
         print('确认本机IP: $localIP');
-        devices.add(localIP); // 直接添加本机IP
-        onDeviceFound?.call(localIP); // 通知发现了本机IP
+        
+        // 添加本机设备信息
+        final localDevice = DeviceInfo(
+          ip: localIP,
+          type: DeviceType.desktop, // 假设本机是桌面设备
+          openPorts: [],
+          isLocalDevice: true,
+        );
+        devices.add(localDevice);
+        onDeviceFound?.call(localDevice);
       }
 
       if (subnet == null || localIP == null || _isCancelled) {
@@ -246,7 +295,7 @@ class ARPService {
       for (int start = 1; start <= 254; start += _maxConcurrent) {
         if (_isCancelled) break;
         
-        final batch = <Future<bool>>[];
+        final batch = <Future<DeviceInfo?>>[];
         final batchIPs = <String>[];
         
         // 创建一批扫描任务
@@ -268,10 +317,11 @@ class ARPService {
             onProgress(scannedHosts / totalHosts);
           }
           
-          if (results[i]) {
-            devices.add(batchIPs[i]);
-            print('添加设备: ${batchIPs[i]}');
-            onDeviceFound?.call(batchIPs[i]);
+          final device = results[i];
+          if (device != null) {
+            devices.add(device);
+            print('添加设备: ${device.ip} (${device.typeDescription})');
+            onDeviceFound?.call(device);
           }
         }
       }
@@ -291,8 +341,8 @@ class ARPService {
         // 按IP地址排序（本机IP已经在第一位）
         final otherDevices = devices.sublist(1);
         otherDevices.sort((a, b) {
-          final aNum = int.parse(a.split('.').last);
-          final bNum = int.parse(b.split('.').last);
+          final aNum = int.parse(a.ip.split('.').last);
+          final bNum = int.parse(b.ip.split('.').last);
           return aNum.compareTo(bNum);
         });
         devices.replaceRange(1, devices.length, otherDevices);
@@ -306,17 +356,34 @@ class ARPService {
   }
 
   /// 扫描单个主机的端口
-  Future<bool> _scanHost(String ip) async {
-    if (_isCancelled) return false;
+  Future<DeviceInfo?> _scanHost(String ip) async {
+    if (_isCancelled) return null;
     
     try {
       // 并发检查所有端口
       final futures = _commonPorts.map((port) => _checkPort(ip, port));
       final results = await Future.wait(futures);
-      return results.any((isOpen) => isOpen);
+      
+      // 收集开放的端口
+      final openPorts = <int>[];
+      for (int i = 0; i < results.length; i++) {
+        if (results[i]) {
+          openPorts.add(_commonPorts[i]);
+        }
+      }
+      
+      if (openPorts.isNotEmpty) {
+        final deviceType = _determineDeviceType(openPorts);
+        return DeviceInfo(
+          ip: ip,
+          type: deviceType,
+          openPorts: openPorts,
+        );
+      }
+      return null;
     } catch (e) {
       print('扫描主机错误: $ip - $e');
-      return false;
+      return null;
     }
   }
 

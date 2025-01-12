@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math';
 import '../services/service_locator.dart';
 import '../services/arp_service.dart';
+import '../models/device_info.dart';
 
 class IpScannerScreen extends StatefulWidget {
   const IpScannerScreen({super.key});
@@ -16,8 +17,8 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
   late AnimationController _animationController;
   final _arpService = getIt<ARPService>();
   final ValueNotifier<bool> _isScanning = ValueNotifier<bool>(false);
-  final ValueNotifier<String> _localIP = ValueNotifier<String>('');
-  final ValueNotifier<List<String>> _activeIPs = ValueNotifier<List<String>>([]);
+  final ValueNotifier<DeviceInfo?> _localDevice = ValueNotifier<DeviceInfo?>(null);
+  final ValueNotifier<List<DeviceInfo>> _activeDevices = ValueNotifier<List<DeviceInfo>>([]);
   final ValueNotifier<double> _progress = ValueNotifier<double>(0.0);
   final ValueNotifier<int> _deviceCount = ValueNotifier<int>(0);
   final ValueNotifier<bool> _hasVPN = ValueNotifier<bool>(false);
@@ -40,8 +41,8 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
     _arpService.cancel();
     _animationController.dispose();
     _isScanning.dispose();
-    _localIP.dispose();
-    _activeIPs.dispose();
+    _localDevice.dispose();
+    _activeDevices.dispose();
     _progress.dispose();
     _deviceCount.dispose();
     _hasVPN.dispose();
@@ -56,8 +57,8 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
     
     // 重置所有状态
     _isScanning.value = true;
-    _localIP.value = '';
-    _activeIPs.value = [];
+    _localDevice.value = null;
+    _activeDevices.value = [];
     _progress.value = 0.0;
     _deviceCount.value = 0;
     _hasVPN.value = false;
@@ -80,19 +81,15 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
         },
         onDeviceFound: (device) {
           if (mounted) {
-            if (!_activeIPs.value.contains(device)) {
-              _activeIPs.value = [..._activeIPs.value, device];
-              _deviceCount.value = _activeIPs.value.length;
+            if (device.isLocalDevice) {
+              _localDevice.value = device;
+            } else {
+              _activeDevices.value = [..._activeDevices.value, device];
+              _deviceCount.value = _activeDevices.value.length;
             }
           }
         },
       );
-      
-      if (mounted && !_arpService.isCancelled) {
-        if (devices.isNotEmpty) {
-          _localIP.value = devices.first; // 第一个是本机IP
-        }
-      }
 
     } catch (e) {
       debugPrint('扫描错误: $e');
@@ -165,26 +162,28 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                 );
               },
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.computer, color: Colors.blue),
-                  const SizedBox(width: 8),
-                  ValueListenableBuilder<String>(
-                    valueListenable: _localIP,
-                    builder: (context, localIP, child) {
-                      return Text(
-                        '本机IP: $localIP',
+            // 本机信息
+            ValueListenableBuilder<DeviceInfo?>(
+              valueListenable: _localDevice,
+              builder: (context, localDevice, child) {
+                if (localDevice == null) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Icon(localDevice.icon, color: localDevice.color),
+                      const SizedBox(width: 8),
+                      Text(
+                        '本机IP: ${localDevice.ip}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             Expanded(
               child: ValueListenableBuilder<bool>(
@@ -279,22 +278,33 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                   : Column(
                       children: [
                         Expanded(
-                          child: ValueListenableBuilder<List<String>>(
-                            valueListenable: _activeIPs,
-                            builder: (context, ips, child) {
-                              return ValueListenableBuilder<String>(
-                                valueListenable: _localIP,
-                                builder: (context, localIP, child) {
-                                  return ListView.builder(
-                                    itemCount: ips.length,
-                                    itemBuilder: (context, index) {
-                                      final ip = ips[index];
-                                      return ListTile(
-                                        leading: const Icon(Icons.devices),
-                                        title: Text(ip),
-                                        subtitle: Text(ip == localIP ? '(本机)' : '在线设备'),
-                                      );
-                                    },
+                          child: ValueListenableBuilder<List<DeviceInfo>>(
+                            valueListenable: _activeDevices,
+                            builder: (context, devices, child) {
+                              return ListView.builder(
+                                itemCount: devices.length,
+                                itemBuilder: (context, index) {
+                                  final device = devices[index];
+                                  return ListTile(
+                                    leading: Icon(device.icon, color: device.color),
+                                    title: Text(
+                                      device.ip,
+                                      style: TextStyle(
+                                        color: device.color,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      device.typeDescription,
+                                      style: TextStyle(color: device.color.withOpacity(0.7)),
+                                    ),
+                                    trailing: Text(
+                                      '${device.openPorts.length}个端口',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    ),
                                   );
                                 },
                               );
