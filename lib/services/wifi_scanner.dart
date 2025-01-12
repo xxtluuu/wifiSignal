@@ -231,9 +231,8 @@ class WifiScanner {
 
   // 获取信号强度等级
   String getSignalLevel(int strength) {
-    if (strength >= -50) return '极好';
+    if (strength >= -40) return '极好';
     if (strength >= -60) return '很好';
-    if (strength >= -70) return '好';
     if (strength >= -80) return '一般';
     return '差';
   }

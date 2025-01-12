@@ -68,9 +68,8 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
 
   // 获取信号强度对应的颜色
   Color _getSignalColor(int strength) {
-    if (strength >= -50) return Colors.green;
-    if (strength >= -60) return Colors.lightGreen;
-    if (strength >= -70) return Colors.yellow;
+    if (strength >= -40) return Colors.green;
+    if (strength >= -60) return Colors.blue;
     if (strength >= -80) return Colors.orange;
     return Colors.red;
   }
@@ -106,7 +105,7 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
                     TableCell(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 2),
-                        child: Text('-20 ~ -50 dBm', style: TextStyle(fontSize: 12)),
+                        child: Text('-20 ~ -40 dBm', style: TextStyle(fontSize: 12)),
                       ),
                     ),
                   ],
@@ -122,23 +121,7 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
                     TableCell(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 2),
-                        child: Text('-50 ~ -60 dBm', style: TextStyle(fontSize: 12)),
-                      ),
-                    ),
-                  ],
-                ),
-                TableRow(
-                  children: [
-                    TableCell(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 2),
-                        child: Text('好', style: TextStyle(fontSize: 12)),
-                      ),
-                    ),
-                    TableCell(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 2),
-                        child: Text('-60 ~ -70 dBm', style: TextStyle(fontSize: 12)),
+                        child: Text('-40 ~ -60 dBm', style: TextStyle(fontSize: 12)),
                       ),
                     ),
                   ],
@@ -154,7 +137,7 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
                     TableCell(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 2),
-                        child: Text('-70 ~ -80 dBm', style: TextStyle(fontSize: 12)),
+                        child: Text('-60 ~ -80 dBm', style: TextStyle(fontSize: 12)),
                       ),
                     ),
                   ],
