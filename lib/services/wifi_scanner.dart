@@ -148,7 +148,7 @@ class WifiScanner {
         print('DEBUG: iOS - WiFi名称: $wifiName');
         
         if (wifiName != null) {
-          return -65; // iOS上返回固定的中等信号强度
+          return -60; // iOS上返回固定的中等信号强度
         }
         return 0;
       }
@@ -210,7 +210,7 @@ class WifiScanner {
 
         final bssid = await _networkInfo.getWifiBSSID() ?? '';
         final ip = await _networkInfo.getWifiIP();
-        final signal = -65; // iOS使用固定信号强度
+        final signal = -60; // iOS使用固定信号强度
 
         print('DEBUG: iOS - 网络信息:');
         print('DEBUG: iOS - SSID: $ssid');

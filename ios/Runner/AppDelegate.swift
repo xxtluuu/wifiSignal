@@ -52,24 +52,35 @@ import NetworkExtension
         let locationStatus = CLLocationManager.authorizationStatus()
         print("DEBUG: 位置权限状态: \(locationStatus.rawValue)")
         
-        // 尝试获取WiFi信息
-        NEHotspotNetwork.fetchCurrent { network in
-            print("DEBUG: 尝试获取WiFi网络信息")
-            if let network = network {
-                print("DEBUG: 成功获取到WiFi网络: \(network.ssid)")
-                // iOS不提供具体的信号强度，我们根据signalStrength（0-1的值）转换为dBm
-                let signalStrength = Int(-100 + (network.signalStrength * 60))
-                DispatchQueue.main.async {
-                    completion(signalStrength)
-                }
-            } else {
-                print("DEBUG: 未能获取到WiFi网络信息")
-                DispatchQueue.main.async {
-                    completion(0)
+        guard locationStatus == .authorizedWhenInUse || locationStatus == .authorizedAlways else {
+            print("DEBUG: 位置权限未授权")
+            completion(0)
+            return
+        }
+        
+        // 使用CNCopyCurrentNetworkInfo API获取WiFi信息
+            guard let interfaces = CNCopySupportedInterfaces() as? [String] else {
+                print("DEBUG: 无法获取网络接口")
+                completion(0)
+                return
+            }
+            
+            for interface in interfaces {
+                if let networkInfo = CNCopyCurrentNetworkInfo(interface as CFString) as? [String: Any] {
+                    print("DEBUG: 成功获取到WiFi网络: \(networkInfo["SSID"] ?? "Unknown")")
+                    // 由于旧API不提供信号强度，返回一个默认值
+                    DispatchQueue.main.async {
+                        completion(-65) // 返回一个中等信号强度的默认值
+                    }
+                    return
                 }
             }
+            
+            print("DEBUG: 未能获取到WiFi网络信息")
+            DispatchQueue.main.async {
+                completion(0)
+            }
         }
-    }
     
     // CLLocationManagerDelegate
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
@@ -79,5 +90,14 @@ import NetworkExtension
         default:
             break
         }
+    }
+    
+    private func checkSystemNetworkingPermissions() -> String? {
+        // 检查WiFi信息访问权限
+        let wifiInfoAccess = Bundle.main.object(forInfoDictionaryKey: "com.apple.developer.networking.wifi-info") as? Bool
+        if wifiInfoAccess != true {
+            return "WiFi信息访问权限未配置"
+        }
+        return nil
     }
 }

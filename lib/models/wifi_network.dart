@@ -38,9 +38,8 @@ class WifiNetwork {
   }
 
   String getSignalLevel() {
-    if (signalStrength >= -50) return '极好';
+    if (signalStrength >= -40) return '极好';
     if (signalStrength >= -60) return '很好';
-    if (signalStrength >= -70) return '好';
     if (signalStrength >= -80) return '一般';
     return '差';
   }
