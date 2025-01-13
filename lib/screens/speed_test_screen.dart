@@ -20,8 +20,8 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (request) {
-            // 只允许speedtest.cn域名的请求
-            if (request.url.contains('speedtest.cn')) {
+            // 只允许cloudflare speed test域名的请求
+            if (request.url.contains('speed.cloudflare.com')) {
               return NavigationDecision.navigate;
             }
             // 阻止其他所有导航请求
@@ -29,7 +29,7 @@ class _SpeedTestScreenState extends State<SpeedTestScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse('https://m.speedtest.cn'));
+      ..loadRequest(Uri.parse('https://speed.cloudflare.com'));
   }
 
   @override

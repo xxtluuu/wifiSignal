@@ -22,8 +22,8 @@ class _MyAppState extends State<MyApp> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    SpeedTestScreen(),
     IpCheckScreen(),
+    SpeedTestScreen(),
   ];
 
   @override
@@ -59,12 +59,12 @@ class _MyAppState extends State<MyApp> {
               label: 'WiFi信号监测',
             ),
             NavigationDestination(
-              icon: Icon(Icons.speed),
-              label: '网速测试',
-            ),
-            NavigationDestination(
               icon: Icon(Icons.public),
               label: '公网IP检查',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.speed),
+              label: '全球测速',
             ),
           ],
         ),
