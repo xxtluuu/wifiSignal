@@ -107,17 +107,17 @@ class ARPService {
     32469, // Plex媒体服务器
     8554,  // Live555 RTSP服务
     
-    // 移动设备服务
-    5000,  // Android开发服务
-    5555,  // Android ADB调试
-    62078, // iOS服务
-    
     // NAS和媒体服务器
     548,   // AFP - Apple文件共享
     8096,  // Jellyfin媒体服务器
     8123,  // Home Assistant智能家居
     5001,  // Synology NAS服务
     
+      // 移动设备服务
+    5000,  // Android开发服务
+    5555,  // Android ADB调试
+    62078, // iOS服务
+
     // 替代端口
     8080,  // 替代HTTP端口
     8443,  // 替代HTTPS端口

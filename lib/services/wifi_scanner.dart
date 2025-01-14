@@ -152,9 +152,14 @@ class WifiScanner {
         
         if (wifiName != null) {
           // 使用网关延迟服务获取模拟信号强度
-          final simulatedSignal = await _gatewayLatencyService.getSimulatedSignalStrength();
-          print('DEBUG: iOS - 模拟信号强度: $simulatedSignal dBm');
-          return simulatedSignal;
+          final result = await _gatewayLatencyService.getSimulatedSignalStrength();
+          final signal = result['signal'] as int;
+          if (Platform.isIOS) {
+            print('DEBUG: iOS - 模拟信号强度: $signal dBm, 网关延迟: ${result['latency']}');
+          } else {
+            print('DEBUG: iOS - 模拟信号强度: $signal dBm');
+          }
+          return signal;
         }
         return 0;
       }
@@ -216,24 +221,28 @@ class WifiScanner {
 
         final bssid = await _networkInfo.getWifiBSSID() ?? '';
         final ip = await _networkInfo.getWifiIP();
-        final signal = -60; // iOS使用固定信号强度
+        // 获取模拟信号强度
+        final result = await _gatewayLatencyService.getSimulatedSignalStrength();
+        final signalStrength = result['signal'] as int;
+        final latency = Platform.isIOS ? result['latency'] as String : null;
 
         print('DEBUG: iOS - 网络信息:');
         print('DEBUG: iOS - SSID: $ssid');
         print('DEBUG: iOS - BSSID: $bssid');
         print('DEBUG: iOS - IP: $ip');
-        print('DEBUG: iOS - 信号: $signal dBm');
-
-        // 获取模拟信号强度
-        final simulatedSignal = await _gatewayLatencyService.getSimulatedSignalStrength();
+        print('DEBUG: iOS - 信号: $signalStrength dBm');
+        if (latency != null) {
+          print('DEBUG: iOS - 网关延迟: $latency');
+        }
         
         return WifiNetwork(
           ssid: ssid.replaceAll('"', ''),
           bssid: bssid,
-          signalStrength: simulatedSignal.toDouble(),
+          signalStrength: signalStrength.toDouble(),
           ipAddress: ip,
           timestamp: DateTime.now(),
           frequency: null, // iOS上暂不支持获取频率信息
+          gatewayLatency: latency,
         );
       }
     } catch (e) {

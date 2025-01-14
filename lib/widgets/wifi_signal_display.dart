@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../services/wifi_scanner.dart';
@@ -21,6 +22,7 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
   static const int _maxDataPoints = 45; // 显示最近90秒的数据
   WifiNetwork? _currentNetwork;
   StreamSubscription? _signalSubscription;
+  Timer? _networkUpdateTimer;
 
   @override
   void initState() {
@@ -45,6 +47,10 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
       });
     });
     _loadCurrentNetwork();
+    // iOS端降低更新频率，Android端保持原频率
+    _networkUpdateTimer = Timer.periodic(Duration(seconds: Platform.isIOS ? 3 : 1), (timer) {
+      _loadCurrentNetwork();
+    });
   }
 
   void _loadCurrentNetwork() async {
@@ -59,6 +65,8 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
   void dispose() {
     _signalSubscription?.cancel();
     _signalSubscription = null;
+    _networkUpdateTimer?.cancel();
+    _networkUpdateTimer = null;
     widget.wifiScanner.stopMonitoring();
     super.dispose();
   }
@@ -203,28 +211,39 @@ class _WifiSignalDisplayState extends State<WifiSignalDisplay> {
                 child: Column(
                   children: [
                   if (_signalData.isNotEmpty) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Column(
                       children: [
-                        Text(
-                          '${_signalData.last.y.toInt()} dBm',
-                          style: Theme.of(context).textTheme.headlineMedium,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '${_signalData.last.y.toInt()} dBm',
+                              style: Theme.of(context).textTheme.headlineMedium,
+                            ),
+                            const SizedBox(width: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getSignalColor(_signalData.last.y.toInt()),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                widget.wifiScanner.getSignalLevel(_signalData.last.y.toInt()),
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
+                        if (_currentNetwork?.gatewayLatency != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            '网关延迟: ${_currentNetwork!.gatewayLatency}',
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
-                          decoration: BoxDecoration(
-                            color: _getSignalColor(_signalData.last.y.toInt()),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            widget.wifiScanner.getSignalLevel(_signalData.last.y.toInt()),
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                   ],

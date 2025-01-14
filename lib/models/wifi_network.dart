@@ -5,6 +5,7 @@ class WifiNetwork {
   final String? ipAddress;
   final DateTime timestamp;
   final int? frequency; // 添加频率字段
+  final String? gatewayLatency; // 添加网关延迟字段
 
   WifiNetwork({
     required this.ssid,
@@ -13,6 +14,7 @@ class WifiNetwork {
     this.ipAddress,
     required this.timestamp,
     this.frequency,
+    this.gatewayLatency,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class WifiNetwork {
       'ipAddress': ipAddress,
       'timestamp': timestamp.toIso8601String(),
       'frequency': frequency,
+      'gatewayLatency': gatewayLatency,
     };
   }
 
@@ -34,6 +37,7 @@ class WifiNetwork {
       ipAddress: map['ipAddress'],
       timestamp: DateTime.parse(map['timestamp']),
       frequency: map['frequency'],
+      gatewayLatency: map['gatewayLatency'],
     );
   }
 
