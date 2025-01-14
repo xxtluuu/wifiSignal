@@ -4,25 +4,27 @@ import 'package:network_info_plus/network_info_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 import '../models/wifi_network.dart';
-
+import 'gateway_latency_service.dart';
 class WifiScanner {
   Timer? _timer;
   Timer? _vibrationTimer;
   final _networkInfo = NetworkInfo();
+  final _gatewayLatencyService = GatewayLatencyService();
   bool _isVibrating = false;
+  
   
   // 信号强度流控制器
   final _signalController = StreamController<int>.broadcast();
   Stream<int> get signalStream => _signalController.stream;
 
   // 震动参数
-  static const int _minSignal = -80; // 最低信号强度
-  static const int _maxSignal = -50; // 最高信号强度
-  static const int _signalRange = _maxSignal - _minSignal; // 信号范围（30）
-  static const int _minInterval = 100; // 最短震动间隔（信号最好时）
-  static const int _maxInterval = 1000; // 最长震动间隔（信号最差时）
-  static const int _vibrationDuration = 100; // 震动持续时间（毫秒）
-  static const List<int> _vibrationPattern = [0, 30]; // 震动强度模式，设置为30%
+  static const int _minSignal = -95; // 最低信号强度（与GatewayLatencyService保持一致）
+  static const int _maxSignal = -35; // 最高信号强度（与GatewayLatencyService保持一致）
+  static const int _signalRange = _maxSignal - _minSignal; // 信号范围（60）
+  static const int _minInterval = 30; // 最短震动间隔（信号最好时）
+  static const int _maxInterval = 400; // 最长震动间隔（信号最差时）
+  static const int _minDuration = 15; // 最短震动持续时间（信号最好时）
+  static const int _maxDuration = 100; // 最长震动持续时间（信号最差时）
 
   // 平台通道
   static const platform = MethodChannel('wifi.luuu.com/wifi');
@@ -42,8 +44,8 @@ class WifiScanner {
     
     _isVibrating = true;
     
-    // 启动信号监测定时器
-    _timer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+    // 启动信号监测定时器（更高频率的监测）
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
       if (!_isVibrating) return;
       final signal = await getCurrentSignalStrength();
       _signalController.add(signal);
@@ -103,8 +105,9 @@ class WifiScanner {
       if (_isVibrating) {
         try {
           if (await Vibration.hasVibrator() ?? false) {
-            // 使用30%的震动强度
-            await Vibration.vibrate(duration: _vibrationDuration, amplitude: 30);
+            // 根据信号强度调整震动持续时间
+            final duration = (_maxDuration - (_maxDuration - _minDuration) * normalizedSignal).toInt();
+            await Vibration.vibrate(duration: duration, amplitude: 30);
           }
         } catch (e) {
           print('震动执行失败: $e');
@@ -148,7 +151,10 @@ class WifiScanner {
         print('DEBUG: iOS - WiFi名称: $wifiName');
         
         if (wifiName != null) {
-          return -60; // iOS上返回固定的中等信号强度
+          // 使用网关延迟服务获取模拟信号强度
+          final simulatedSignal = await _gatewayLatencyService.getSimulatedSignalStrength();
+          print('DEBUG: iOS - 模拟信号强度: $simulatedSignal dBm');
+          return simulatedSignal;
         }
         return 0;
       }
@@ -218,14 +224,16 @@ class WifiScanner {
         print('DEBUG: iOS - IP: $ip');
         print('DEBUG: iOS - 信号: $signal dBm');
 
-        // iOS上暂不支持获取频率信息
+        // 获取模拟信号强度
+        final simulatedSignal = await _gatewayLatencyService.getSimulatedSignalStrength();
+        
         return WifiNetwork(
           ssid: ssid.replaceAll('"', ''),
           bssid: bssid,
-          signalStrength: signal.toDouble(),
+          signalStrength: simulatedSignal.toDouble(),
           ipAddress: ip,
           timestamp: DateTime.now(),
-          frequency: null,
+          frequency: null, // iOS上暂不支持获取频率信息
         );
       }
     } catch (e) {
@@ -234,10 +242,10 @@ class WifiScanner {
     }
   }
 
-  // 获取信号强度等级
+  // 获取信号强度等级（调整阈值以匹配新的更大范围）
   String getSignalLevel(int strength) {
-    if (strength >= -40) return '极好';
-    if (strength >= -60) return '很好';
+    if (strength >= -45) return '极好';
+    if (strength >= -65) return '很好';
     if (strength >= -80) return '一般';
     return '差';
   }
