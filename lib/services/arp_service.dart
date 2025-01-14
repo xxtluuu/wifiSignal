@@ -373,6 +373,15 @@ class ARPService {
       }
       
       if (openPorts.isNotEmpty) {
+        // 如果设备有5000和5001端口开放，则判定为NAS设备
+        if (openPorts.contains(5000) && openPorts.contains(5001)) {
+          return DeviceInfo(
+            ip: ip,
+            type: DeviceType.nas,
+            openPorts: openPorts,
+          );
+        }
+        
         final deviceType = _determineDeviceType(openPorts);
         return DeviceInfo(
           ip: ip,
