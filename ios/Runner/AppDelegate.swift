@@ -15,7 +15,7 @@ import NetworkExtension
     ) -> Bool {
         let controller = window?.rootViewController as! FlutterViewController
         let channel = FlutterMethodChannel(
-            name: "com.wifitool.wifisignal/wifi",
+            name: "wifi.luuu.com/wifi",
             binaryMessenger: controller.binaryMessenger
         )
         
