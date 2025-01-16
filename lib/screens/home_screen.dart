@@ -59,24 +59,25 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('WiFi优化助手'),
         actions: [
           // 信道分析入口
-          IconButton(
-            icon: const Icon(Icons.analytics),
-            onPressed: () {
-              if (_isMonitoring) {
-                setState(() {
-                  _isMonitoring = false;
-                  _scanner.stopMonitoring();
-                });
-              }
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ChannelAnalysisScreen(),
-                ),
-              );
-            },
-            tooltip: '信道分析',
-          ),
+          if (!Platform.isIOS)
+            IconButton(
+              icon: const Icon(Icons.analytics),
+              onPressed: () {
+                if (_isMonitoring) {
+                  setState(() {
+                    _isMonitoring = false;
+                    _scanner.stopMonitoring();
+                  });
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ChannelAnalysisScreen(),
+                  ),
+                );
+              },
+              tooltip: '信道分析',
+            ),
           // IP扫描入口
           IconButton(
             icon: const Icon(Icons.lan),
