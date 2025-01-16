@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math';
 import '../services/service_locator.dart';
 import '../services/arp_service.dart';
+import '../services/arp_service/vpn_detector.dart';
 import '../models/device_info.dart';
 
 class IpScannerScreen extends StatefulWidget {
@@ -65,9 +66,9 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
 
     try {
       // 检查VPN状态
-      if (await _arpService.isVPNActive()) {
+      if (await VPNDetector.isVPNActive()) {
         _hasVPN.value = true;
-        throw Exception('检测到VPN连接，请关闭VPN后重试');
+        return; // 直接返回，不抛出异常
       }
       
       // 确保之前的扫描已经完全取消
@@ -93,14 +94,10 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
 
     } catch (e) {
       debugPrint('扫描错误: $e');
-      if (mounted) {
+      if (mounted && !_hasVPN.value) { // 只在非VPN错误时显示SnackBar
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              e.toString().contains('VPN') 
-                ? '检测到VPN连接，请关闭VPN后重试' 
-                : '扫描出错，请重试'
-            ),
+            content: const Text('扫描出错，请重试'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),

@@ -2,175 +2,18 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:typed_data';
 import '../models/device_info.dart';
+import 'arp_service/port_config.dart';
+import 'arp_service/device_type_detector.dart';
+import 'arp_service/vpn_detector.dart';
 
 class ARPService {
   static const int _timeout = 300; // 超时时间(毫秒)
   static const int _maxConcurrent = 20; // 最大并发扫描数
   
-  // VPN相关的网络接口名称
-  static const List<String> _vpnInterfaces = [
-    'tun', // OpenVPN
-    'ppp', // PPTP VPN
-    'ipsec', // IPSec VPN
-    'utun', // iOS/macOS VPN
-    'ras', // Windows VPN
-    'tap', // OpenVPN TAP
-    'nordlynx', // NordVPN WireGuard
-    'wg', // WireGuard
-  ];
-
-  /// 检查是否存在VPN连接
-  Future<bool> isVPNActive() async {
-    try {
-      final interfaces = await NetworkInterface.list();
-      
-      for (var interface in interfaces) {
-        // 检查接口名称是否包含VPN相关标识
-        if (_vpnInterfaces.any((vpn) => interface.name.toLowerCase().contains(vpn))) {
-          print('检测到VPN接口: ${interface.name}');
-          return true;
-        }
-        
-        // 检查IP地址特征
-        for (var addr in interface.addresses) {
-          if (addr.type == InternetAddressType.IPv4) {
-            // 检查是否是VPN典型的IP段
-            if (addr.address.startsWith('10.') || 
-                (addr.address.startsWith('172.') && 
-                 int.parse(addr.address.split('.')[1]) >= 16 && 
-                 int.parse(addr.address.split('.')[1]) <= 31)) {
-              print('检测到可能的VPN IP地址: ${addr.address} on ${interface.name}');
-              // 进一步验证是否确实是VPN接口
-              if (_vpnInterfaces.any((vpn) => interface.name.toLowerCase().contains(vpn))) {
-                return true;
-              }
-            }
-          }
-        }
-      }
-      return false;
-    } catch (e) {
-      print('VPN检测错误: $e');
-      return false;
-    }
-  }
-  
-  // 整合后的常见设备端口列表
-  static const List<int> _commonPorts = [
-    // 基础网络服务
-    20,    // FTP - 数据传输
-    21,    // FTP - 控制连接
-    22,    // SSH - 安全远程访问
-    23,    // Telnet - 远程登录
-    25,    // SMTP - 邮件发送
-    53,    // DNS - 域名解析
-    67,    // DHCP - 服务器端
-    68,    // DHCP - 客户端
-    69,    // TFTP - 简单文件传输
-    80,    // HTTP - Web服务
-    110,   // POP3 - 邮件接收
-    143,   // IMAP - 邮件访问
-    161,   // SNMP - 网络管理
-    162,   // SNMP Trap
-    443,   // HTTPS - 安全Web服务
-    
-    // 文件共享和打印服务
-    137,   // NetBIOS - 名称服务
-    138,   // NetBIOS - 数据报
-    139,   // NetBIOS - 会话服务
-    445,   // SMB/CIFS - 文件共享
-    515,   // LPD/LPR - 打印服务
-    631,   // IPP - 互联网打印协议
-    9100,  // RAW/JetDirect 打印
-
-    // 数据库和管理服务
-    1433,  // MS SQL Server
-    1521,  // Oracle数据库
-    3306,  // MySQL/MariaDB
-    5432,  // PostgreSQL
-    3389,  // RDP - 远程桌面
-    10000, // Webmin管理界面
-
-    // IoT和智能设备
-    1883,  // MQTT - IoT消息协议
-    5683,  // CoAP - 物联网协议
-    5353,  // mDNS - 设备发现
-    1900,  // SSDP - 设备发现
-    49152, // UPnP - 设备发现
-    
-    // 流媒体和娱乐
-    554,   // RTSP - 实时流协议
-    1935,  // RTMP - 实时消息协议
-    3074,  // Xbox Live游戏服务
-    3478,  // STUN/TURN - VoIP服务
-    3479,  // STUN/TURN - VoIP备用
-    32469, // Plex媒体服务器
-    8554,  // Live555 RTSP服务
-    
-    // NAS和媒体服务器
-    548,   // AFP - Apple文件共享
-    8096,  // Jellyfin媒体服务器
-    8123,  // Home Assistant智能家居
-    5001,  // Synology NAS服务
-    
-      // 移动设备服务
-    5000,  // Android开发服务
-    5555,  // Android ADB调试
-    62078, // iOS服务
-
-    // 替代端口
-    8080,  // 替代HTTP端口
-    8443,  // 替代HTTPS端口
-    
-    // 额外的服务发现端口
-    5357,  // WSDAPI - Web服务发现
-    3689,  // DAAP - iTunes音乐共享
-  ];
-  
   // 取消标志
   bool get isCancelled => _isCancelled;
   bool _isCancelled = false;
   List<StreamSubscription>? _activeSubscriptions;
-
-  /// 根据开放端口判断设备类型
-  DeviceType _determineDeviceType(List<int> openPorts) {
-    // 检查是否是网关/路由器
-    if (openPorts.any((port) => [80, 443, 8080].contains(port))) {
-      return DeviceType.gateway;
-    }
-    
-    // 检查是否是打印机
-    if (openPorts.any((port) => [515, 631, 9100].contains(port))) {
-      return DeviceType.printer;
-    }
-    
-    // 检查是否是游戏机
-    if (openPorts.contains(3074)) {
-      return DeviceType.gameConsole;
-    }
-    
-    // 检查是否是移动设备
-    if (openPorts.any((port) => [5000, 5555, 62078].contains(port))) {
-      return DeviceType.mobile;
-    }
-    
-    // 检查是否是桌面设备
-    if (openPorts.contains(3389)) {
-      return DeviceType.desktop;
-    }
-    
-    // 检查是否是NAS设备
-    if (openPorts.any((port) => [548, 8096, 5001].contains(port))) {
-      return DeviceType.nas;
-    }
-    
-    // 检查是否是IoT设备
-    if (openPorts.any((port) => [1883, 5683, 1900, 49152].contains(port))) {
-      return DeviceType.iot;
-    }
-    
-    return DeviceType.unknown;
-  }
 
   /// 扫描网络设备
   /// onProgress: 扫描进度回调函数
@@ -188,7 +31,7 @@ class ARPService {
     
     try {
       // 检查VPN连接
-      if (await isVPNActive()) {
+      if (await VPNDetector.isVPNActive()) {
         throw Exception('检测到VPN连接，请关闭VPN后重试');
       }
       
@@ -250,20 +93,27 @@ class ARPService {
       // 优先选择wlan0接口的192.168网段地址
       Map<String, String>? selectedAddress;
       
-      // 首先尝试找到wlan0接口的192.168网段地址
-      selectedAddress = privateAddresses.firstWhere(
-        (addr) => addr['type'] == '192.168' && addr['interface'] == 'wlan0',
-        orElse: () => {'address': '', 'interface': ''}
-      );
-      
-      // 如果没找到wlan0，则尝试任意192.168网段地址
-      if (selectedAddress['address']?.isEmpty == true) {
+      // 根据平台选择合适的网络接口
+      if (Platform.isIOS) {
+        // 在iOS上，优先选择en0接口（通常是WiFi）的地址
         selectedAddress = privateAddresses.firstWhere(
-          (addr) => addr['type'] == '192.168',
-          orElse: () => privateAddresses.isNotEmpty ? privateAddresses.first : {'address': '', 'interface': ''}
+          (addr) => addr['interface']?.toLowerCase() == 'en0' && addr['type'] == '192.168',
+          orElse: () => privateAddresses.firstWhere(
+            (addr) => addr['type'] == '192.168',
+            orElse: () => privateAddresses.firstWhere(
+              (addr) => true,
+              orElse: () => {'address': '', 'interface': ''}
+            )
+          )
+        );
+      } else {
+        // 在其他平台上保持原有的wlan0优先级
+        selectedAddress = privateAddresses.firstWhere(
+          (addr) => addr['type'] == '192.168' && addr['interface'] == 'wlan0',
+          orElse: () => {'address': '', 'interface': ''}
         );
       }
-
+      
       print('选择的网络接口: ${selectedAddress['interface']}');
       print('选择的IP地址: ${selectedAddress['address']}');
 
@@ -361,14 +211,14 @@ class ARPService {
     
     try {
       // 并发检查所有端口
-      final futures = _commonPorts.map((port) => _checkPort(ip, port));
+      final futures = PortConfig.commonPorts.map((port) => _checkPort(ip, port));
       final results = await Future.wait(futures);
       
       // 收集开放的端口
       final openPorts = <int>[];
       for (int i = 0; i < results.length; i++) {
         if (results[i]) {
-          openPorts.add(_commonPorts[i]);
+          openPorts.add(PortConfig.commonPorts[i]);
         }
       }
       
@@ -382,7 +232,7 @@ class ARPService {
           );
         }
         
-        final deviceType = _determineDeviceType(openPorts);
+        final deviceType = DeviceTypeDetector.determineDeviceType(openPorts);
         return DeviceInfo(
           ip: ip,
           type: deviceType,
