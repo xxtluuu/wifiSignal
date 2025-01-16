@@ -113,222 +113,253 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // 返回前取消扫描
-        _arpService.cancel();
-        return true;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('局域网IP扫描'),
-        ),
-        body: Column(
-          children: [
-            // VPN警告提示
-            ValueListenableBuilder<bool>(
-              valueListenable: _hasVPN,
-              builder: (context, hasVPN, child) {
-                if (!hasVPN) return const SizedBox.shrink();
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.red.shade50,
-                  child: Row(
-                    children: [
-                      Icon(Icons.warning_amber_rounded, 
-                        color: Colors.red[700],
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          '检测到VPN连接，请关闭VPN后重试',
-                          style: TextStyle(
-                            color: Colors.red[700],
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _startScan,
-                        child: const Text('重试'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            // 本机信息
-            ValueListenableBuilder<DeviceInfo?>(
-              valueListenable: _localDevice,
-              builder: (context, localDevice, child) {
-                if (localDevice == null) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Icon(localDevice.icon, color: localDevice.color),
-                      const SizedBox(width: 8),
-                      Text(
-                        '本机IP: ${localDevice.ip}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            Expanded(
-              child: ValueListenableBuilder<bool>(
-                valueListenable: _isScanning,
-                builder: (context, isScanning, child) => isScanning
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // 扫描动画
-                          SizedBox(
-                            width: 200,
-                            height: 200,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // 旋转的外圈
-                                RotationTransition(
-                                  turns: _animationController,
-                                  child: CustomPaint(
-                                    size: const Size(200, 200),
-                                    painter: _ScannerPainter(
-                                      color: Colors.blue.withOpacity(0.3),
-                                    ),
-                                  ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('局域网设备扫描'),
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            // 重置扫描状态
+            setState(() {
+              _isScanning.value = false;
+              _localDevice.value = null;
+              _activeDevices.value = [];
+              _progress.value = 0.0;
+              _deviceCount.value = 0;
+              _hasVPN.value = false;
+            });
+            // 开始新的扫描
+            await _startScan();
+          },
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    // 扫描动画和状态显示
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _isScanning,
+                      builder: (context, isScanning, child) {
+                        if (!isScanning && _activeDevices.value.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(32.0),
+                              child: Text(
+                                '未发现设备\n下拉可重新扫描',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
                                 ),
-                                // 进度圈
-                                ValueListenableBuilder<double>(
-                                  valueListenable: _progress,
-                                  builder: (context, progress, child) {
-                                    return CircularProgressIndicator(
-                                      value: progress,
-                                      backgroundColor: Colors.grey[200],
-                                      strokeWidth: 8,
-                                      color: Colors.blue,
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 40),
-                          // 扫描信息
-                          Column(
-                            children: [
-                              Icon(
-                                Icons.wifi_find,
-                                size: 40,
-                                color: Colors.blue[700],
                               ),
-                              const SizedBox(height: 16),
-                              ValueListenableBuilder<double>(
-                                valueListenable: _progress,
-                                builder: (context, progress, child) {
-                                  return Text(
-                                    '${(progress * 100).toInt()}%',
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
+                            ),
+                          );
+                        }
+                        
+                        if (isScanning) {
+                          return Column(
+                            children: [
+                              const SizedBox(height: 20),
+                              // 雷达扫描动画
+                              SizedBox(
+                                width: 200,
+                                height: 200,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    // 旋转的外圈
+                                    RotationTransition(
+                                      turns: _animationController,
+                                      child: CustomPaint(
+                                        size: const Size(200, 200),
+                                        painter: _ScannerPainter(
+                                          color: Colors.blue.withOpacity(0.3),
+                                        ),
+                                      ),
                                     ),
-                                  );
-                                },
+                                    // 进度圈
+                                    ValueListenableBuilder<double>(
+                                      valueListenable: _progress,
+                                      builder: (context, progress, child) {
+                                        return CircularProgressIndicator(
+                                          value: progress,
+                                          backgroundColor: Colors.grey[200],
+                                          strokeWidth: 8,
+                                          color: Colors.blue,
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 24),
-                              Text(
-                                '正在扫描局域网设备...',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ValueListenableBuilder<int>(
-                                valueListenable: _deviceCount,
-                                builder: (context, count, child) {
-                                  return Text(
-                                    '已发现 $count 个设备',
-                                    style: const TextStyle(
+                              // 扫描进度信息
+                              Column(
+                                children: [
+                                  Icon(
+                                    Icons.wifi_find,
+                                    size: 32,
+                                    color: Colors.blue[700],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ValueListenableBuilder<double>(
+                                    valueListenable: _progress,
+                                    builder: (context, progress, child) {
+                                      return Text(
+                                        '${(progress * 100).toInt()}%',
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '正在扫描局域网设备...',
+                                    style: TextStyle(
                                       fontSize: 16,
-                                      color: Colors.blue,
-                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[700],
                                     ),
-                                  );
-                                },
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ValueListenableBuilder<int>(
+                                    valueListenable: _deviceCount,
+                                    builder: (context, count, child) {
+                                      return Text(
+                                        '已发现 $count 个设备',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.blue,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          );
+                        }
+                        
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                    // 扫描结果统计
+                    if (!_isScanning.value && _activeDevices.value.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: _deviceCount,
+                          builder: (context, count, child) {
+                            return Text(
+                              '发现 $count 个在线设备',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    // VPN警告
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _hasVPN,
+                      builder: (context, hasVPN, child) {
+                        if (!hasVPN) return const SizedBox.shrink();
+                        return Container(
+                          padding: const EdgeInsets.all(16),
+                          margin: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red[300]!),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, color: Colors.red[700]),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  '检测到VPN连接，请关闭VPN后下拉刷新重试',
+                                  style: TextStyle(color: Colors.red[700]),
+                                ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        Expanded(
-                          child: ValueListenableBuilder<List<DeviceInfo>>(
-                            valueListenable: _activeDevices,
-                            builder: (context, devices, child) {
-                              return ListView.builder(
-                                itemCount: devices.length,
-                                itemBuilder: (context, index) {
-                                  final device = devices[index];
-                                  return ListTile(
-                                    leading: Icon(device.icon, color: device.color),
-                                    title: Text(
-                                      device.ip,
-                                      style: TextStyle(
-                                        color: device.color,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      device.typeDescription,
-                                      style: TextStyle(color: device.color.withOpacity(0.7)),
-                                    ),
-                                    trailing: Text(
-                                      '${device.openPorts.length}个端口',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: ValueListenableBuilder<int>(
-                            valueListenable: _deviceCount,
-                            builder: (context, count, child) {
-                              return Text(
-                                '已发现 $count 个在线设备',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.blue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
+                    // 本地设备信息
+                    ValueListenableBuilder<DeviceInfo?>(
+                      valueListenable: _localDevice,
+                      builder: (context, localDevice, child) {
+                        if (localDevice == null) return const SizedBox.shrink();
+                        return ListTile(
+                          leading: Icon(localDevice.icon, color: localDevice.color),
+                          title: Text(
+                            '本机IP: ${localDevice.ip}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // 扫描到的设备列表
+                    ValueListenableBuilder<List<DeviceInfo>>(
+                      valueListenable: _activeDevices,
+                      builder: (context, devices, child) {
+                        if (devices.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Text(
+                                _isScanning.value ? '正在扫描...' : '未发现设备\n下拉可重新扫描',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        return Column(
+                          children: devices.map((device) => ListTile(
+                            leading: Icon(device.icon, color: device.color),
+                            title: Text(
+                              device.ip,
+                              style: TextStyle(
+                                color: device.color,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              device.typeDescription,
+                              style: TextStyle(color: device.color.withOpacity(0.7)),
+                            ),
+                            trailing: Text(
+                              '${device.openPorts.length}个端口',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          )).toList(),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
