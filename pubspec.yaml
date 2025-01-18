@@ -12,13 +12,13 @@ dependencies:
   cupertino_icons: ^1.0.2 # iOS风格的图标
   wifi_iot: ^0.3.18 # 用于操作WiFi功能
   network_info_plus: ^4.0.0 # 用于获取设备网络信息
+  connectivity_plus: ^5.0.2 # 用于检测网络连接状态
   fl_chart: ^0.65.0 # 用于创建图表和数据可视化
   provider: ^6.0.5 # 状态管理工具
   vibration: ^1.8.3 # 控制设备振动
   get_it: ^7.6.7 # 依赖注入工具
   ping_discover_network_forked: ^0.0.1 # 网络Ping工具
   webview_flutter: ^4.4.2 # 在应用中嵌入网页
-  flutter_vpn: ^0.13.0 # VPN检测工具
 
 dev_dependencies:
   flutter_test:

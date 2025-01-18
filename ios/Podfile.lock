@@ -1,11 +1,13 @@
 PODS:
+  - connectivity_plus (0.0.1):
+    - Flutter
+    - ReachabilitySwift
   - device_info_plus (0.0.1):
     - Flutter
   - Flutter (1.0.0)
-  - flutter_vpn (0.1.0):
-    - Flutter
   - network_info_plus (0.0.1):
     - Flutter
+  - ReachabilitySwift (5.2.4)
   - vibration (1.7.5):
     - Flutter
   - webview_flutter_wkwebview (0.0.1):
@@ -15,21 +17,25 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
+  - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - Flutter (from `Flutter`)
-  - flutter_vpn (from `.symlinks/plugins/flutter_vpn/ios`)
   - network_info_plus (from `.symlinks/plugins/network_info_plus/ios`)
   - vibration (from `.symlinks/plugins/vibration/ios`)
   - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
   - wifi_iot (from `.symlinks/plugins/wifi_iot/ios`)
 
+SPEC REPOS:
+  trunk:
+    - ReachabilitySwift
+
 EXTERNAL SOURCES:
+  connectivity_plus:
+    :path: ".symlinks/plugins/connectivity_plus/ios"
   device_info_plus:
     :path: ".symlinks/plugins/device_info_plus/ios"
   Flutter:
     :path: Flutter
-  flutter_vpn:
-    :path: ".symlinks/plugins/flutter_vpn/ios"
   network_info_plus:
     :path: ".symlinks/plugins/network_info_plus/ios"
   vibration:
@@ -40,10 +46,11 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/wifi_iot/ios"
 
 SPEC CHECKSUMS:
+  connectivity_plus: 481668c94744c30c53b8895afb39159d1e619bdf
   device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
-  flutter_vpn: e6f2803e48269cadde5086b3e1877a6f26f418bf
   network_info_plus: b6c3b27559bf719cc53ef571a947b3ac4629754c
+  ReachabilitySwift: 32793e867593cfc1177f5d16491e3a197d2fccda
   vibration: 8e2f50fc35bb736f9eecb7dd9f7047fbb6a6e888
   webview_flutter_wkwebview: 44d4dee7d7056d5ad185d25b38404436d56c547c
   wifi_iot: f645260a2be8608517b2a9bf4c39b98e97003acc

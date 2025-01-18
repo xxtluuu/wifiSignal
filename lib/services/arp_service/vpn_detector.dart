@@ -1,15 +1,26 @@
 import 'dart:io';
 import 'package:network_info_plus/network_info_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class VPNDetector {
   static final _networkInfo = NetworkInfo();
+  static final _connectivity = Connectivity();
   
   /// 检查是否存在VPN连接
   static Future<bool> isVPNActive() async {
     try {
-      final interfaces = await NetworkInterface.list();
       print('========= VPN检测开始 =========');
       print('当前平台: ${Platform.isIOS ? "iOS" : Platform.isAndroid ? "Android" : "其他平台"}');
+
+      // 首先检查网络连接类型
+      final connectivityResult = await _connectivity.checkConnectivity();
+      if (connectivityResult == ConnectivityResult.vpn) {
+        print('通过 connectivity_plus 检测到VPN连接');
+        return true;
+      }
+
+      // 如果connectivity_plus没有检测到VPN，使用网络接口检测作为备选方案
+      final interfaces = await NetworkInterface.list();
       
       if (Platform.isIOS) {
         // iOS平台的VPN检测
