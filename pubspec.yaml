@@ -1,7 +1,7 @@
 name: wifisignal
 description: WiFi信号监测工具，适用于局域网络优化
 publish_to: 'none' # 将项目标记为不发布到 pub.dev
-version: 1.2.0+1
+version: 1.2.2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

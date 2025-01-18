@@ -19,13 +19,15 @@ import NetworkExtension
             binaryMessenger: controller.binaryMessenger
         )
         
+        // 初始化位置管理器并请求权限
+        setupLocationManager()
+        
         // 处理方法调用
         channel.setMethodCallHandler { [weak self] call, result in
             guard let self = self else { return }
             
             switch call.method {
             case "getWifiSignalStrength":
-                self.setupLocationManager()
                 self.getWifiInfo { signalStrength in
                     result(signalStrength)
                 }
@@ -43,7 +45,12 @@ import NetworkExtension
             locationManager = CLLocationManager()
             locationManager?.delegate = self
             locationManager?.desiredAccuracy = kCLLocationAccuracyBest
+            // 请求位置权限
             locationManager?.requestWhenInUseAuthorization()
+            // 同时请求精确位置权限
+            if #available(iOS 14.0, *) {
+                locationManager?.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "WiFiSignal")
+            }
         }
     }
     
