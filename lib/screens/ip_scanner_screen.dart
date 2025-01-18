@@ -20,7 +20,6 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
   final ValueNotifier<bool> _isScanning = ValueNotifier<bool>(false);
   final ValueNotifier<DeviceInfo?> _localDevice = ValueNotifier<DeviceInfo?>(null);
   final ValueNotifier<List<DeviceInfo>> _activeDevices = ValueNotifier<List<DeviceInfo>>([]);
-  final ValueNotifier<double> _progress = ValueNotifier<double>(0.0);
   final ValueNotifier<int> _deviceCount = ValueNotifier<int>(0);
   final ValueNotifier<bool> _hasVPN = ValueNotifier<bool>(false);
 
@@ -44,7 +43,6 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
     _isScanning.dispose();
     _localDevice.dispose();
     _activeDevices.dispose();
-    _progress.dispose();
     _deviceCount.dispose();
     _hasVPN.dispose();
     super.dispose();
@@ -60,7 +58,6 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
     _isScanning.value = true;
     _localDevice.value = null;
     _activeDevices.value = [];
-    _progress.value = 0.0;
     _deviceCount.value = 0;
     _hasVPN.value = false;
 
@@ -75,11 +72,6 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
       await Future.delayed(const Duration(milliseconds: 100));
       
       final devices = await _arpService.scanNetwork(
-        onProgress: (progress) {
-          if (mounted) {
-            _progress.value = progress;
-          }
-        },
         onDeviceFound: (device) {
           if (mounted) {
             if (device.isLocalDevice) {
@@ -106,7 +98,6 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
     } finally {
       if (mounted) {
         _isScanning.value = false;
-        _progress.value = 1.0;
       }
     }
   }
@@ -125,7 +116,6 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
               _isScanning.value = false;
               _localDevice.value = null;
               _activeDevices.value = [];
-              _progress.value = 0.0;
               _deviceCount.value = 0;
               _hasVPN.value = false;
             });
@@ -178,23 +168,11 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                                         ),
                                       ),
                                     ),
-                                    // 进度圈
-                                    ValueListenableBuilder<double>(
-                                      valueListenable: _progress,
-                                      builder: (context, progress, child) {
-                                        return CircularProgressIndicator(
-                                          value: progress,
-                                          backgroundColor: Colors.grey[200],
-                                          strokeWidth: 8,
-                                          color: Colors.blue,
-                                        );
-                                      },
-                                    ),
                                   ],
                                 ),
                               ),
                               const SizedBox(height: 24),
-                              // 扫描进度信息
+                              // 扫描状态信息
                               Column(
                                 children: [
                                   Icon(
@@ -203,20 +181,6 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                                     color: Colors.blue[700],
                                   ),
                                   const SizedBox(height: 12),
-                                  ValueListenableBuilder<double>(
-                                    valueListenable: _progress,
-                                    builder: (context, progress, child) {
-                                      return Text(
-                                        '${(progress * 100).toInt()}%',
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(height: 8),
                                   Text(
                                     '正在扫描局域网设备...',
                                     style: TextStyle(
@@ -240,7 +204,6 @@ class _IpScannerScreenState extends State<IpScannerScreen> with SingleTickerProv
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 20),
                             ],
                           );
                         }

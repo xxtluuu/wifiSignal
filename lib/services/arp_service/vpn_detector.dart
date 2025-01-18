@@ -1,86 +1,76 @@
 import 'dart:io';
+import 'package:network_info_plus/network_info_plus.dart';
 
 class VPNDetector {
-  // VPN相关的网络接口名称
-  static const List<String> vpnInterfaces = [
-    'tun',      // OpenVPN
-    'ppp',      // PPTP VPN
-    'ipsec',    // IPSec VPN
-    'nordlynx', // NordVPN WireGuard
-    'wg',       // WireGuard
-    'vpn',      // 通用VPN标识
-  ];
-
+  static final _networkInfo = NetworkInfo();
+  
   /// 检查是否存在VPN连接
   static Future<bool> isVPNActive() async {
     try {
       final interfaces = await NetworkInterface.list();
-      
-      print('========= 网络接口检测开始 =========');
+      print('========= VPN检测开始 =========');
       print('当前平台: ${Platform.isIOS ? "iOS" : Platform.isAndroid ? "Android" : "其他平台"}');
       
-      // 用于Android的特殊检测
-      bool hasWlan0 = false;
-      bool hasVPNInterface = false;
-      
-      for (var interface in interfaces) {
-        print('\n检查接口: ${interface.name}');
-        print('接口地址:');
-        for (var addr in interface.addresses) {
-          print('  - ${addr.address} (${addr.type == InternetAddressType.IPv4 ? "IPv4" : "IPv6"})');
-        }
-
-        // iOS平台的处理
-        if (Platform.isIOS) {
+      if (Platform.isIOS) {
+        // iOS平台的VPN检测
+        for (var interface in interfaces) {
+          print('检查接口: ${interface.name}');
+          
+          // 跳过iOS系统的utun接口
           if (interface.name.toLowerCase().startsWith('utun')) {
-            print('  [iOS] 跳过utun接口检测');
+            print('  [iOS] 跳过utun接口');
             continue;
           }
+          
           // 检查是否是VPN接口
-          if (vpnInterfaces.any((vpn) => interface.name.toLowerCase().contains(vpn))) {
+          if (interface.name.toLowerCase().contains('tun') ||  // OpenVPN
+              interface.name.toLowerCase().contains('ppp') ||  // PPTP
+              interface.name.toLowerCase().contains('ipsec')) {  // IPSec
             print('  [iOS] 检测到VPN接口: ${interface.name}');
             return true;
           }
         }
-        // Android平台的处理
-        else if (Platform.isAndroid) {
-          // 记录是否存在wlan0接口
+      } else if (Platform.isAndroid) {
+        // Android平台的VPN检测
+        bool hasVPNInterface = false;
+        bool hasWlan0 = false;
+        
+        for (var interface in interfaces) {
+          print('检查接口: ${interface.name}');
+          
+          // 检查是否存在wlan0接口
           if (interface.name.toLowerCase() == 'wlan0') {
             hasWlan0 = true;
+            continue;
           }
           
-          // 检查VPN特征
-          if (vpnInterfaces.any((vpn) => interface.name.toLowerCase().contains(vpn))) {
+          // 检查VPN接口特征
+          if (interface.name.toLowerCase().contains('tun') ||   // OpenVPN/WireGuard
+              interface.name.toLowerCase().contains('ppp') ||   // PPTP
+              interface.name.toLowerCase().contains('ipsec')) { // IPSec
+            print('  [Android] 检测到VPN接口: ${interface.name}');
             hasVPNInterface = true;
-          }
-          
-          // 检查接口的IP地址特征
-          for (var addr in interface.addresses) {
-            if (addr.type == InternetAddressType.IPv4) {
-              // 在Android上，VPN通常会创建一个IP地址为10.0.0.x的tun接口
-              if (addr.address.startsWith('10.') && interface.name.toLowerCase().contains('tun')) {
-                print('  [Android] 检测到VPN接口: ${interface.name} with IP ${addr.address}');
-                hasVPNInterface = true;
+            
+            // 检查接口的IP地址
+            for (var addr in interface.addresses) {
+              if (addr.type == InternetAddressType.IPv4) {
+                print('    IP地址: ${addr.address}');
               }
             }
           }
         }
-      }
-      
-      // Android平台的最终判断
-      if (Platform.isAndroid) {
-        // 如果检测到VPN接口并且存在wlan0，则认为VPN处于活动状态
+        
+        // Android上通常同时存在VPN接口和wlan0时才确认VPN已连接
         if (hasVPNInterface && hasWlan0) {
           print('  [Android] 确认VPN连接：检测到VPN接口且存在wlan0');
           return true;
         }
       }
       
-      print('========= 网络接口检测完成 =========');
       print('未检测到VPN连接');
       return false;
     } catch (e) {
-      print('VPN检测错误: $e');
+      print('VPN检测出错: $e');
       return false;
     }
   }
